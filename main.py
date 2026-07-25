@@ -5,7 +5,7 @@ from ui.main_window import MainWindow
 def main():
     app = QApplication(sys.argv)
     
-    # スタイル設定（オプション：ダークテーマ風）
+    # Application style (optional dark-theme appearance)
     app.setStyle("Fusion")
     
     window = MainWindow()

@@ -1,18 +1,18 @@
 """
-設定の永続化モジュール
-PySide6の QSettings を使用してアプリ設定を保存・復元する。
+Settings persistence module.
+Uses PySide6 QSettings to save and restore application settings.
 """
 from PySide6.QtCore import QSettings
 
-# アプリ識別子
+# Application identifiers
 APP_ORG = "LifeSizeViewer"
 APP_NAME = "UniversalLifeSizeViewer"
 
 
 class AppSettings:
-    """アプリケーション設定の保存・読込を管理するクラス"""
+    """Manages saving and loading application settings."""
 
-    # 設定キーのデフォルト値
+    # Default values for settings keys
     DEFAULTS = {
         "monitor/ppi": 96.0,
         "monitor/selected_name": "",
@@ -25,16 +25,16 @@ class AppSettings:
 
     def __init__(self):
         import os
-        # プロジェクトルートに config.ini を作成・読込する
+        # Create and load config.ini in the project root.
         config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.ini")
         self._settings = QSettings(config_path, QSettings.Format.IniFormat)
 
     @property
     def file_path(self) -> str:
-        """設定ファイルの保存先パスを返す"""
+        """Return the path where the settings file is stored."""
         return self._settings.fileName()
 
-    # --- 読込 ---
+    # --- Loading ---
     def ppi(self) -> float:
         return float(self._settings.value("monitor/ppi", self.DEFAULTS["monitor/ppi"]))
 
@@ -49,7 +49,7 @@ class AppSettings:
 
     def show_grid(self) -> bool:
         val = self._settings.value("view/show_grid", self.DEFAULTS["view/show_grid"])
-        # QSettings は文字列で保存する場合がある
+        # QSettings may store the value as a string.
         if isinstance(val, str):
             return val.lower() == "true"
         return bool(val)
@@ -60,7 +60,7 @@ class AppSettings:
     def window_geometry(self) -> bytes | None:
         return self._settings.value("window/geometry", None)
 
-    # --- 保存 ---
+    # --- Saving ---
     def save_ppi(self, value: float):
         self._settings.setValue("monitor/ppi", value)
 
@@ -82,10 +82,10 @@ class AppSettings:
     def save_window_geometry(self, geometry: bytes):
         self._settings.setValue("window/geometry", geometry)
 
-    # --- 一括保存ヘルパー ---
+    # --- Bulk-save helper ---
     def save_all(self, *, ppi: float, monitor_name: str, target_pd_text: str, target_pd_value: float,
                  show_grid: bool, sensitivity: float, geometry: bytes):
-        """全設定を一括保存する"""
+        """Save all settings at once."""
         self.save_ppi(ppi)
         self.save_monitor_name(monitor_name)
         self.save_target_pd_text(target_pd_text)

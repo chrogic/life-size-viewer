@@ -14,25 +14,25 @@ from mediapipe.tasks.python import vision
 DEFAULT_MODEL_PATH = str(Path(__file__).resolve().parent.parent / "face_landmarker.task")
 
 class WebcamWorker(QThread):
-    """Webカメラでユーザーの距離変化を監視するスレッド"""
-    ratio_signal = Signal(float)  # 基準距離に対する現在の比率を送る
+    """Thread that monitors changes in the user's distance with a webcam."""
+    ratio_signal = Signal(float)  # Emits the current ratio relative to the baseline distance.
 
     def __init__(self, model_path: str | None = None):
         super().__init__()
         self.running = False
         self.model_path = model_path or DEFAULT_MODEL_PATH
         self.base_dist = None
-        self.history = deque(maxlen=10) # スムージング用
+        self.history = deque(maxlen=10) # For smoothing.
 
     def calibrate(self):
-        """現在の距離を基準(1.0)とする"""
+        """Set the current distance as the baseline (1.0)."""
         self.base_dist = None
         self.history.clear()
 
     def run(self):
         self.running = True
         
-        # Workerスレッド内でDetectorを初期化 (スレッドセーフ対策)
+        # Initialize the detector in the worker thread for thread safety.
         try:
             base_options = python.BaseOptions(model_asset_path=self.model_path)
             options = vision.FaceLandmarkerOptions(
@@ -59,7 +59,7 @@ class WebcamWorker(QThread):
                 time.sleep(0.1)
                 continue
 
-            # MediaPipe処理
+            # MediaPipe processing.
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
             
@@ -71,7 +71,7 @@ class WebcamWorker(QThread):
                     lms = res.face_landmarks[0]
                     lx, ly = lms[LEFT_IRIS].x, lms[LEFT_IRIS].y
                     rx, ry = lms[RIGHT_IRIS].x, lms[RIGHT_IRIS].y
-                    # 正規化座標での距離を使用（解像度依存を減らす）
+                    # Use normalized-coordinate distance to reduce resolution dependence.
                     dist = math.hypot(lx - rx, ly - ry)
 
                     if self.base_dist is None:

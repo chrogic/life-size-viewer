@@ -10,7 +10,7 @@ from mediapipe.tasks.python import vision
 DEFAULT_MODEL_PATH = str(Path(__file__).resolve().parent.parent / "face_landmarker.task")
 
 class FaceDetector:
-    """MediaPipeを使用した静止画の顔検出ロジックを管理するクラス"""
+    """Manages MediaPipe face detection for still images."""
     def __init__(self, model_path: str | None = None):
         self.model_path = model_path or DEFAULT_MODEL_PATH
         self.detector = self._create_detector()
@@ -33,21 +33,22 @@ class FaceDetector:
 
     def analyze(self, image_bgr: np.ndarray):
         """
-        画像を解析し、瞳孔間距離(px)、補正係数、顔の中心座標(px)を返す。
-        全体画像で検出できない場合、4分割して再試行する。
+        Analyze an image and return pupillary distance (px), correction factor,
+        and face-center coordinates (px). If full-image detection fails, retry
+        with four overlapping image regions.
         Returns: (dist_px, correction_factor, (center_x, center_y))
         """
-        # 1. まず全体画像で試行
+        # 1. Try the full image first.
         result = self._detect_single(image_bgr)
         if result[0] is not None:
             return result
 
-        # 2. 全体で検出できなければ、重複付き4分割で試行
+        # 2. If that fails, try four overlapping image regions.
         return self._detect_with_quadrants(image_bgr)
 
     def _detect_single(self, image_bgr: np.ndarray):
         """
-        単一画像の顔検出を実行する（内部メソッド）。
+        Detect a face in one image (internal method).
         Returns: (dist_px, correction_factor, (center_x, center_y))
         """
         if self.detector is None:
@@ -69,11 +70,11 @@ class FaceDetector:
         lx, ly = landmarks[self.LEFT_IRIS_IDX].x * w, landmarks[self.LEFT_IRIS_IDX].y * h
         rx, ry = landmarks[self.RIGHT_IRIS_IDX].x * w, landmarks[self.RIGHT_IRIS_IDX].y * h
         
-        # 画面上の単純距離
+        # Straight-line distance in the image.
         apparent_dist = np.hypot(lx - rx, ly - ry)
         center_pt = ((lx + rx) / 2.0, (ly + ry) / 2.0)
 
-        # 角度補正 (Yaw)
+        # Yaw-angle correction.
         correction_factor = 1.0
         if result.facial_transformation_matrixes:
             try:
@@ -91,21 +92,22 @@ class FaceDetector:
 
     def _detect_with_quadrants(self, image_bgr: np.ndarray):
         """
-        画像を重複付き4分割し、各領域で顔検出を試みる。
-        検出時は座標を元画像の座標系に変換して返す。
+        Split the image into four overlapping regions and try face detection in
+        each. When detection succeeds, convert coordinates to the original
+        image coordinate system before returning them.
 
-        各領域は画像の 62.5% x 62.5%（25%オーバーラップ）
+        Each region is 62.5% x 62.5% of the image (25% overlap).
         """
         h, w = image_bgr.shape[:2]
         qw = int(w * 0.625)
         qh = int(h * 0.625)
 
-        # (x_offset, y_offset) で各領域の左上座標を定義
+        # Define each region by its top-left (x_offset, y_offset) coordinate.
         quadrants = [
-            (0,      0),          # 左上
-            (w - qw, 0),          # 右上
-            (0,      h - qh),     # 左下
-            (w - qw, h - qh),     # 右下
+            (0,      0),          # Top left
+            (w - qw, 0),          # Top right
+            (0,      h - qh),     # Bottom left
+            (w - qw, h - qh),     # Bottom right
         ]
 
         for ox, oy in quadrants:
@@ -113,7 +115,7 @@ class FaceDetector:
             dist, correction, center = self._detect_single(crop)
 
             if dist is not None:
-                # 座標を元画像の座標系に変換
+                # Convert coordinates to the original image coordinate system.
                 original_center = (center[0] + ox, center[1] + oy)
                 return dist, correction, original_center
 

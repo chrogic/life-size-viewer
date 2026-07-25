@@ -1,6 +1,6 @@
 """
-モニター情報の自動検出モジュール
-PySide6の QScreen API を使用して接続モニターの情報を取得する。
+Automatic monitor-information detection module.
+Uses the PySide6 QScreen API to retrieve information about connected monitors.
 """
 import math
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ from PySide6.QtCore import QSizeF
 
 @dataclass
 class MonitorInfo:
-    """モニター1台分の情報を保持するデータクラス"""
+    """Data class that holds information for one monitor."""
     name: str
     width_px: int
     height_px: int
@@ -21,15 +21,15 @@ class MonitorInfo:
 
     @property
     def display_label(self) -> str:
-        """UI表示用のラベル文字列を生成する"""
+        """Create a label string for display in the UI."""
         primary_tag = " ★" if self.is_primary else ""
         return f"{self.name} ({self.width_px}x{self.height_px}) — {self.ppi:.2f} PPI{primary_tag}"
 
 
 def _calc_ppi(width_px: int, height_px: int, phys_size: QSizeF) -> float:
     """
-    ピクセル解像度と物理サイズからPPIを計算する。
-    物理サイズが取得できない場合は 96.0 (Windowsデフォルト) を返す。
+    Calculate PPI from pixel resolution and physical size.
+    Return 96.0 (the Windows default) if the physical size is unavailable.
     """
     w_mm = phys_size.width()
     h_mm = phys_size.height()
@@ -49,8 +49,8 @@ def _calc_ppi(width_px: int, height_px: int, phys_size: QSizeF) -> float:
 
 def get_monitors() -> list[MonitorInfo]:
     """
-    接続されている全モニターの情報を取得する。
-    QApplication が存在しない場合は空リストを返す。
+    Retrieve information for all connected monitors.
+    Return an empty list when no QApplication exists.
     """
     app = QApplication.instance()
     if app is None:
@@ -78,13 +78,13 @@ def get_monitors() -> list[MonitorInfo]:
         )
         monitors.append(info)
 
-    # プライマリモニターを先頭にソート
+    # Sort with the primary monitor first.
     monitors.sort(key=lambda m: (not m.is_primary, m.name))
     return monitors
 
 
 def get_primary_monitor() -> MonitorInfo | None:
-    """プライマリモニターの情報を返す。取得できなければ None。"""
+    """Return information for the primary monitor, or None if unavailable."""
     monitors = get_monitors()
     for m in monitors:
         if m.is_primary:
@@ -94,8 +94,8 @@ def get_primary_monitor() -> MonitorInfo | None:
 
 def get_monitor_for_widget(widget) -> MonitorInfo | None:
     """
-    指定ウィジェットが表示されているモニターの情報を返す。
-    ウィンドウがモニター間を移動した際の検知に使用。
+    Return information for the monitor displaying the specified widget.
+    Used to detect when a window moves between monitors.
     """
     screen = widget.screen()
     if screen is None:
@@ -122,34 +122,34 @@ def get_monitor_for_widget(widget) -> MonitorInfo | None:
     )
 
 
-# --- 最低解像度チェック ---
-# サイドバー固定幅 240px + ビューポート最低 560px = 800px
-# コントロール群の高さ + タイトル/ステータスバー = 600px
+# --- Minimum-resolution checks ---
+# Fixed sidebar width of 240px + minimum viewport width of 560px = 800px
+# Control height + title/status bars = 600px
 MIN_WIDTH = 800
 MIN_HEIGHT = 600
 
 
 def check_minimum_resolution(width_px: int, height_px: int) -> tuple[bool, str]:
     """
-    指定された解像度が最低要件を満たすかチェックする。
-    Returns: (OK: bool, 警告メッセージ: str)
+    Check whether a resolution meets the minimum requirement.
+    Returns: (OK: bool, warning_message: str)
     """
     if width_px >= MIN_WIDTH and height_px >= MIN_HEIGHT:
         return True, ""
     return False, (
-        f"解像度 {width_px}x{height_px} は推奨最低解像度 "
-        f"{MIN_WIDTH}x{MIN_HEIGHT} を下回っています。"
+        f"Resolution {width_px}x{height_px} is below the recommended minimum "
+        f"of {MIN_WIDTH}x{MIN_HEIGHT}."
     )
 
 
 def check_all_monitors() -> list[str]:
     """
-    全モニターを検査し、最低解像度を満たすモニターが1台もない場合に
-    警告メッセージのリストを返す。1台でも条件を満たせば空リストを返す。
+    Inspect all monitors and return warning messages when none meets the
+    minimum resolution. Return an empty list if at least one monitor qualifies.
     """
     monitors = get_monitors()
     if not monitors:
-        return ["モニター情報を取得できませんでした。"]
+        return ["Unable to retrieve monitor information."]
 
     warnings = []
     has_suitable = False
@@ -164,8 +164,8 @@ def check_all_monitors() -> list[str]:
         return []
 
     header = (
-        f"接続されている全てのモニターが推奨最低解像度 "
-        f"({MIN_WIDTH}x{MIN_HEIGHT}) を満たしていません。\n"
-        f"UIの一部が正しく表示されない可能性があります。\n"
+        f"All connected monitors are below the recommended minimum resolution "
+        f"of {MIN_WIDTH}x{MIN_HEIGHT}.\n"
+        f"Some parts of the UI may not display correctly.\n"
     )
     return [header + "\n".join(warnings)]

@@ -3,7 +3,7 @@ from PySide6.QtGui import QMouseEvent
 from PySide6.QtCore import Qt, Signal
 
 class ViewerCanvas(QLabel):
-    """クリックイベントを取得するためのQLabel拡張"""
+    """QLabel extension that captures click events."""
     clicked_pos = Signal(int, int)
 
     def __init__(self, parent=None):

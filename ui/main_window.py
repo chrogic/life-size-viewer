@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtGui import QPixmap, QImage, QPalette, QShortcut, QKeySequence
 from PySide6.QtCore import Qt, Slot, QTimer
 
-# 分割したモジュールのインポート
+# Imports from the split modules.
 from model.detector import FaceDetector
 from model.worker import WebcamWorker
 from model.monitor import get_monitors, get_monitor_for_widget, MonitorInfo, check_all_monitors
@@ -22,7 +22,7 @@ class MainWindow(QMainWindow):
         self.resize(1200, 900)
 
         # Logic Modules
-        # モデルパスは各モジュール側で、プロジェクトルートを基準とした絶対パスに解決する。
+        # Each module resolves its model path to an absolute path from the project root.
         self.detector = FaceDetector()
         self.webcam_worker = WebcamWorker()
         self.webcam_worker.ratio_signal.connect(self.on_tracking_update)
@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         grp_pd = QGroupBox("Target PD (mm)")
         l_pd = QVBoxLayout()
         self.combo_pd = QComboBox()
-        self.combo_pd.addItems(["Adult Male (64)", "Adult Female (62)", "Child (55)", "Anime/Wide (68)", "Custom (手動入力)"])
+        self.combo_pd.addItems(["Adult Male (64)", "Adult Female (62)", "Child (55)", "Anime/Wide (68)", "Custom (Manual Input)"])
         self.combo_pd.setEditable(False)
         self.combo_pd.currentIndexChanged.connect(self._on_pd_preset_selected)
         l_pd.addWidget(self.combo_pd)
@@ -147,10 +147,10 @@ class MainWindow(QMainWindow):
         grp_act.setLayout(l_act)
         controls.addWidget(grp_act)
 
-        # 下部にスペーサーを追加して上詰めにする
+        # Add a bottom spacer to keep controls aligned to the top.
         controls.addStretch()
 
-        # コントロール部をウィジェットで包んで表示/非表示を制御
+        # Wrap controls in a widget so their visibility can be toggled.
         self.controls_widget = QWidget()
         self.controls_widget.setLayout(controls)
         self.controls_widget.setFixedWidth(240)
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(False)
         
-        # PySide6用 ColorRole修正済み
+        # ColorRole corrected for PySide6.
         self.scroll_area.setBackgroundRole(QPalette.ColorRole.Dark)
         
         self.canvas = ViewerCanvas()
@@ -173,15 +173,15 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet("font-weight: bold; color: #333;")
         self.statusBar().addWidget(self.status_label)
 
-        # F11 ショートカット
+        # F11 shortcut.
         shortcut_f11 = QShortcut(QKeySequence(Qt.Key.Key_F11), self)
         shortcut_f11.activated.connect(self.toggle_fullscreen)
-        # Escape で全画面解除
+        # Exit fullscreen with Escape.
         shortcut_esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         shortcut_esc.activated.connect(self.exit_fullscreen)
 
-        # 全画面解除用フローティングボタン
-        self.btn_exit_fs = QPushButton("✖ 画面を元に戻す", self)
+        # Floating button for exiting fullscreen.
+        self.btn_exit_fs = QPushButton("✖ Exit Fullscreen", self)
         self.btn_exit_fs.setStyleSheet("""
             QPushButton {
                 background-color: rgba(0, 0, 0, 160);
@@ -296,12 +296,12 @@ class MainWindow(QMainWindow):
         return self.spin_pd.value()
 
     def _on_pd_preset_selected(self, index: int):
-        """PDプリセット選択時のハンドラ"""
+        """Handle a PD preset selection."""
         txt = self.combo_pd.currentText()
         m = re.search(r"\((\d+(\.\d+)?)\)", txt)
         if m:
             self.spin_pd.setValue(float(m.group(1)))
-        # "Custom" の場合は spin_pd の値はそのまま保持する
+        # Keep the current spin_pd value for the Custom option.
 
     def refresh_view(self):
         if self.original_image is None or self.pd_pixel_base is None or self.manual_mode:
@@ -395,7 +395,7 @@ class MainWindow(QMainWindow):
 
     # --- Monitor Detection ---
     def _populate_monitors(self):
-        """検出されたモニター情報をコンボボックスに反映する"""
+        """Populate the combo box with detected monitor information."""
         self._monitors = get_monitors()
         self.combo_monitor.blockSignals(True)
         self.combo_monitor.clear()
@@ -408,19 +408,19 @@ class MainWindow(QMainWindow):
             if current_monitor and mon.name == current_monitor.name:
                 selected_idx = i
 
-        # 「Custom」選択肢を末尾に追加
-        self.combo_monitor.addItem("Custom (手動入力)")
+        # Add the Custom option last.
+        self.combo_monitor.addItem("Custom (Manual Input)")
 
         self.combo_monitor.setCurrentIndex(selected_idx)
         self.combo_monitor.blockSignals(False)
 
-        # 初期PPIを適用
+        # Apply the initial PPI value.
         if self._monitors and selected_idx < len(self._monitors):
             self._current_monitor_name = self._monitors[selected_idx].name
             self.spin_ppi.setValue(self._monitors[selected_idx].ppi)
 
     def _on_monitor_selected(self, index: int):
-        """モニター選択コンボボックスの変更ハンドラ"""
+        """Handle changes to the monitor-selection combo box."""
         if index < 0:
             return
         if index < len(self._monitors):
@@ -428,11 +428,11 @@ class MainWindow(QMainWindow):
             self._current_monitor_name = mon.name
             self.spin_ppi.setValue(mon.ppi)
         else:
-            # Custom 選択 — PPI手動入力モード
+            # Custom selection: manual PPI input mode.
             self._current_monitor_name = None
 
     def resizeEvent(self, event):
-        """ウィンドウリサイズ時に画像の中央配置を維持する"""
+        """Keep the image centered when the window is resized."""
         super().resizeEvent(event)
         if getattr(self, 'pd_pixel_base', None) is not None:
             QTimer.singleShot(0, self.center_on_face)
@@ -440,17 +440,17 @@ class MainWindow(QMainWindow):
             self._update_floating_btn_pos()
 
     def moveEvent(self, event):
-        """ウィンドウ移動時にモニター変更を検知する"""
+        """Detect monitor changes when the window moves."""
         super().moveEvent(event)
         current = get_monitor_for_widget(self)
         if current is None:
             return
         if self._current_monitor_name and current.name != self._current_monitor_name:
             self.status_label.setText(
-                f"モニターが変わりました: {current.name} ({current.ppi:.1f} PPI). "
-                f"コンボボックスから更新できます。"
+                f"Monitor changed: {current.name} ({current.ppi:.1f} PPI). "
+                f"You can update it from the combo box."
             )
-            # 自動でコンボボックスを該当モニターに切り替え
+            # Automatically select the matching monitor in the combo box.
             for i, mon in enumerate(self._monitors):
                 if mon.name == current.name:
                     self.combo_monitor.setCurrentIndex(i)
@@ -458,13 +458,13 @@ class MainWindow(QMainWindow):
 
     # --- Fullscreen ---
     def _update_floating_btn_pos(self):
-        """フローティングボタンの位置を右上に更新する"""
+        """Move the floating button to the top right."""
         if hasattr(self, 'btn_exit_fs') and self.btn_exit_fs.isVisible():
             self.btn_exit_fs.resize(self.btn_exit_fs.sizeHint())
             self.btn_exit_fs.move(self.width() - self.btn_exit_fs.width() - 20, 20)
 
     def toggle_fullscreen(self):
-        """全画面表示をトグルする"""
+        """Toggle fullscreen mode."""
         if self.isFullScreen():
             self.exit_fullscreen()
         else:
@@ -478,7 +478,7 @@ class MainWindow(QMainWindow):
             self._update_floating_btn_pos()
 
     def exit_fullscreen(self):
-        """全画面表示を解除する"""
+        """Exit fullscreen mode."""
         if not self.isFullScreen():
             return
         self.btn_exit_fs.hide()
@@ -489,13 +489,13 @@ class MainWindow(QMainWindow):
 
     # --- Settings Persistence ---
     def _load_settings(self):
-        """保存された設定を復元する"""
-        # PPI: 保存値があればそちらを優先（手動キャリブレーション値の保持）
+        """Restore saved settings."""
+        # Prefer a saved PPI value to preserve manual calibration.
         saved_ppi = self._settings.ppi()
         saved_monitor = self._settings.monitor_name()
 
         if saved_monitor:
-            # 保存されたモニター名がリストにあればそれを選択
+            # Select the saved monitor name if it is in the list.
             for i, mon in enumerate(self._monitors):
                 if mon.name == saved_monitor:
                     self.combo_monitor.blockSignals(True)
@@ -504,7 +504,7 @@ class MainWindow(QMainWindow):
                     self._current_monitor_name = saved_monitor
                     break
 
-        if saved_ppi != 96.0:  # デフォルト値でなければ保存値を適用
+        if saved_ppi != 96.0:  # Apply the saved value if it is not the default.
             self.spin_ppi.setValue(saved_ppi)
 
         # Target PD
@@ -531,7 +531,7 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geometry)
 
     def _save_settings(self):
-        """現在の設定を保存する"""
+        """Save the current settings."""
         self._settings.save_all(
             ppi=self.spin_ppi.value(),
             monitor_name=self._current_monitor_name or "",
@@ -543,12 +543,12 @@ class MainWindow(QMainWindow):
         )
 
     def _check_screen_resolution(self):
-        """起動時に画面解像度が最低要件を満たすかチェックし、警告を表示する"""
+        """Warn at startup if no screen meets the minimum resolution."""
         warnings = check_all_monitors()
         if warnings:
             QMessageBox.warning(
                 self,
-                "画面解像度の警告",
+                "Screen Resolution Warning",
                 "\n\n".join(warnings),
             )
 
