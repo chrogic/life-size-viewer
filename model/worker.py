@@ -31,64 +31,71 @@ class WebcamWorker(QThread):
 
     def run(self):
         self.running = True
-        
-        # Initialize the detector in the worker thread for thread safety.
+        detector = None
+        cap = None
+
         try:
-            base_options = python.BaseOptions(model_asset_path=self.model_path)
-            options = vision.FaceLandmarkerOptions(
-                base_options=base_options,
-                output_face_blendshapes=False,
-                output_facial_transformation_matrixes=False,
-                num_faces=1
-            )
-            detector = vision.FaceLandmarker.create_from_options(options)
-        except Exception:
-            print("Webcam Detector Failed")
-            return
-
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("Cannot open webcam")
-            return
-
-        LEFT_IRIS, RIGHT_IRIS = 468, 473
-
-        while self.running:
-            ret, frame = cap.read()
-            if not ret:
-                time.sleep(0.1)
-                continue
-
-            # MediaPipe processing.
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-            
+            # Initialize the detector in the worker thread for thread safety.
             try:
-                res = detector.detect(mp_img)
-                ratio_out = 1.0
-
-                if res.face_landmarks:
-                    lms = res.face_landmarks[0]
-                    lx, ly = lms[LEFT_IRIS].x, lms[LEFT_IRIS].y
-                    rx, ry = lms[RIGHT_IRIS].x, lms[RIGHT_IRIS].y
-                    # Use normalized-coordinate distance to reduce resolution dependence.
-                    dist = math.hypot(lx - rx, ly - ry)
-
-                    if self.base_dist is None:
-                        self.base_dist = dist
-                    
-                    if self.base_dist > 0 and dist > 0:
-                        raw_ratio = self.base_dist / dist
-                        self.history.append(raw_ratio)
-                        ratio_out = sum(self.history) / len(self.history)
-
-                    self.ratio_signal.emit(ratio_out)
+                base_options = python.BaseOptions(model_asset_path=self.model_path)
+                options = vision.FaceLandmarkerOptions(
+                    base_options=base_options,
+                    output_face_blendshapes=False,
+                    output_facial_transformation_matrixes=False,
+                    num_faces=1
+                )
+                detector = vision.FaceLandmarker.create_from_options(options)
             except Exception:
-                pass
-            
-            time.sleep(0.03) # ~30fps
+                print("Webcam Detector Failed")
+                return
 
-        cap.release()
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("Cannot open webcam")
+                return
+
+            LEFT_IRIS, RIGHT_IRIS = 468, 473
+
+            while self.running:
+                ret, frame = cap.read()
+                if not ret:
+                    time.sleep(0.1)
+                    continue
+
+                # MediaPipe processing.
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+
+                try:
+                    res = detector.detect(mp_img)
+                    ratio_out = 1.0
+
+                    if res.face_landmarks:
+                        lms = res.face_landmarks[0]
+                        lx, ly = lms[LEFT_IRIS].x, lms[LEFT_IRIS].y
+                        rx, ry = lms[RIGHT_IRIS].x, lms[RIGHT_IRIS].y
+                        # Use normalized-coordinate distance to reduce resolution dependence.
+                        dist = math.hypot(lx - rx, ly - ry)
+
+                        if self.base_dist is None:
+                            self.base_dist = dist
+
+                        if self.base_dist > 0 and dist > 0:
+                            raw_ratio = self.base_dist / dist
+                            self.history.append(raw_ratio)
+                            ratio_out = sum(self.history) / len(self.history)
+
+                        self.ratio_signal.emit(ratio_out)
+                except Exception:
+                    pass
+
+                time.sleep(0.03) # ~30fps
+        finally:
+            if cap is not None:
+                cap.release()
+            if detector is not None:
+                detector.close()
+            self.running = False
 
     def stop(self):
         self.running = False
